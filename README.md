@@ -1,24 +1,31 @@
-# Qwen3-4B puzzle reasoning post-training
+# 基于 Qwen3-4B 的逻辑谜题推理后训练
 
-An evidence-backed SFT case study on six types of logic and symbolic puzzles. Starting from the same pinned Qwen3-4B-Base checkpoint, a 4-bit LoRA SFT run improved accuracy on a frozen 600-question validation set from **112/600 (18.67%) to 466/600 (77.67%)**, a **+59.0 percentage-point** difference.
+在六类逻辑与符号推理题上，通用基座模型难以稳定完成多步求解。本项目围绕**可校验的推理数据、4-bit LoRA 监督微调与逐题配对评测**，将同一 Qwen3-4B-Base 模型在冻结的 600 题留出集上的正确率从 **18.67%（112/600）提升至 77.67%（466/600）**，提高 **59.0 个百分点**。
 
-| Task | Base | SFT |
+## 核心工作
+
+- **构造可验证的训练数据。** 以已有的英文推理轨迹建立基本解题形式；对轨迹覆盖不足或推理结构不稳定的题型，引入规则求解器生成并核验答案与过程。数据处理拒绝同题冲突答案、做语义去重，并排除开发集与最终留出集题目，得到 8,791 条 SFT 样本。各题型构成见[数据说明](docs/DATA.md)。
+- **根据错误分析修复数据。** 早期模型在重力题上的表现与预期不符，回查训练轨迹后替换该题型数据；加密题采用等样本数、等总 token 数的替换方案，控制数据量变化。这些是数据构造中的设计决策，最终 Base→SFT 对比不单独归因于某一次替换。
+- **完成受控后训练与评测。** 固定 `Qwen/Qwen3-4B-Base` 的模型 revision，使用 TRL `SFTTrainer`、PEFT LoRA（`r=16`、`alpha=32`、`all-linear`）及 NF4 4-bit 加载，在 4×RTX 4090 上训练 2 个 epoch。Base 与 SFT 使用同一批题、相同提示词、贪心解码和相同评分规则。
+
+## 冻结留出集结果
+
+| 题型 | Base | SFT |
 | --- | ---: | ---: |
-| Bit manipulation | 2/100 | 74/100 |
-| Encryption | 0/100 | 58/100 |
-| Equations | 7/100 | 45/100 |
-| Gravity | 2/100 | 90/100 |
-| Numeral systems | 66/100 | 99/100 |
-| Unit conversion | 35/100 | 100/100 |
+| 位运算 | 2/100 | 74/100 |
+| 加密 | 0/100 | 58/100 |
+| 符号与数值方程 | 7/100 | 45/100 |
+| 重力 | 2/100 | 90/100 |
+| 进制转换 | 66/100 | 99/100 |
+| 单位换算 | 35/100 | 100/100 |
+| **总计** | **112/600（18.67%）** | **466/600（77.67%）** |
 
-The SFT corpus contained 8,791 checked examples. It combined curated reasoning traces with rule-generated, answer-verified traces, then rejected conflicting prompt/answer pairs and excluded frozen evaluation questions. The encryption subset was replaced under an equal-example, equal-token control; gravity was repaired after an audit found the earlier data did not reliably teach the target behavior. The training objective was completion-only SFT on the same six-task distribution—not a claim that one rule or one data source alone produced the gain. [Data construction details](docs/DATA.md).
+逐题配对后，Base 错而 SFT 对的有 **355 题**，反向只有 **1 题**。最终候选先依据开发集确定，再在独立留出集上做一次确认；[汇总结果](results/final-validation.json)和[评测协议](docs/PROTOCOL.md)可供核对。
 
-The experiment used TRL `SFTTrainer`, PEFT LoRA (`r=16`, `alpha=32`, all-linear), NF4 4-bit loading, bf16, 8,192-token training sequences, two epochs and four RTX 4090s. [The result card](results/final-validation.json) and [protocol](docs/PROTOCOL.md) give the exact comparison and its limits. The included [trainer](src/qwen_reasoning/train_sft.py) and [scorer](src/qwen_reasoning/score.py) are data-free reference implementations extracted from the experiment; the original run's private materializations and adapters are not distributed.
+**结果边界：** 这是同一谜题分布上的留出集提升，不等同于跨领域泛化。Base 与 SFT 各自的 600 条生成全部触及 7,680-token 上限，因此本实验不能证明模型学会了自然停止，也不把推理时延作为收益。加密和方程题仍是相对薄弱的题型。
 
-This is a **within-benchmark held-out comparison**, not evidence of broad out-of-domain transfer. Both models reached the 7,680-token generation cap on every validation item. The score gain does not establish improved natural stopping or inference efficiency. The development set was used to choose the SFT candidate and is not presented as a second independent test.
+## 仓库内容与复现
 
-## Reproduce with your own licensed data
+仓库提供从已完成实验中提取的[最小 SFT 训练入口](src/qwen_reasoning/train_sft.py)、[答案评分器](src/qwen_reasoning/score.py)、测试、训练配置摘要及聚合结果。训练入口保留核心 TRL/PEFT 设置，但不包含原实验的私有数据物化、启动审批与断点恢复系统；它是**复现参考实现**，不是原训练运行的完整快照。使用自有授权数据的方法见[复现说明](docs/REPRODUCE.md)。
 
-The training input is JSONL with `id`, `task_type`, `prompt` (system/user chat messages) and `completion` (assistant message). See [reproduction notes](docs/REPRODUCE.md). No private dataset, prompts, predictions, model weights, or server configuration is shipped here. The `results/` files contain aggregate counts only.
-
-Code is Apache-2.0 licensed. The answer scorer is an attributed compatibility port of an Apache-2.0 public metric; the rule-generated training material was derived from a separately MIT-licensed public generator without vendoring its code. See [third-party notices](THIRD_PARTY_NOTICES.md).
+仓库不发布原始题目、推理文本、逐题预测、adapter 或服务器配置。代码按 [Apache-2.0](LICENSE) 许可发布；评分器和部分数据生成来源分别遵循其原许可，见[第三方来源说明](THIRD_PARTY_NOTICES.md)。
