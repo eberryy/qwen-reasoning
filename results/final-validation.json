@@ -1,0 +1,13 @@
+{
+  "protocol": "frozen_validation_v1",
+  "model_id": "Qwen/Qwen3-4B-Base",
+  "model_revision": "906bfd4b4dc7f14ee4320094d8b41684abff8539",
+  "validation_questions": 600,
+  "questions_per_task": 100,
+  "generation": {"temperature": 0.0, "top_p": 1.0, "max_tokens": 7680, "max_model_len": 8192, "load_in_4bit": true},
+  "base": {"run_id": "base-03036b2bdb19", "correct": 112, "boxed": 416, "capped": 600, "per_task_correct": {"bit_manipulation": 2, "encryption": 0, "equations": 7, "gravity": 2, "numeral_system": 66, "unit_conversion": 35}},
+  "sft": {"training_run_id": "sft-8f42ceb382c5", "evaluation_run_id": "sft-8bed8f944328", "correct": 466, "boxed": 569, "capped": 600, "per_task_correct": {"bit_manipulation": 74, "encryption": 58, "equations": 45, "gravity": 90, "numeral_system": 99, "unit_conversion": 100}},
+  "paired_transitions": {"both_correct": 111, "base_wrong_sft_correct": 355, "base_correct_sft_wrong": 1, "both_wrong": 133},
+  "percentage_point_gain": 59.0,
+  "limits": ["single frozen validation confirmation", "all generations reached the 7680-token cap", "no broad transfer or natural-stopping claim"]
+}

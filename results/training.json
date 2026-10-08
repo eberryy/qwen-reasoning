@@ -1,0 +1,18 @@
+{
+  "run_id": "sft-8f42ceb382c5",
+  "status": "completed",
+  "model_id": "Qwen/Qwen3-4B-Base",
+  "model_revision": "906bfd4b4dc7f14ee4320094d8b41684abff8539",
+  "dataset_rows": 8791,
+  "dataset_sha256": "014e62b5486f3e32942194f19142114bba165b9290149c9165e2ab83334a61b2",
+  "task_counts": {"bit_manipulation": 1602, "encryption": 1323, "equations": 1555, "gravity": 1441, "numeral_system": 1426, "unit_conversion": 1444},
+  "epochs": 2,
+  "global_step": 1100,
+  "world_size": 4,
+  "effective_batch_size": 16,
+  "max_length": 8192,
+  "completion_only_loss": true,
+  "packing": false,
+  "adapter": {"type": "lora", "r": 16, "alpha": 32, "target_modules": "all-linear"},
+  "quantization": {"type": "nf4", "load_in_4bit": true, "double_quant": true, "compute_dtype": "bfloat16"}
+}
